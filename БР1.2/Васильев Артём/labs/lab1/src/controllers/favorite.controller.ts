@@ -38,7 +38,8 @@ class FavoriteController extends BaseController {
     @UseBefore(authMiddleware)
     async list(
         @Req() request: RequestWithUser,
-        @QueryParams() query: FavoriteListQueryDto,
+        @QueryParams({ type: FavoriteListQueryDto })
+        query: FavoriteListQueryDto,
     ) {
         const { page, limit, skip } = resolvePagination(query);
         const [items, total] = await this.repository.findAndCount({

@@ -32,7 +32,8 @@ class VacancyViewController extends BaseController {
     @UseBefore(authMiddleware)
     async list(
         @Req() request: RequestWithUser,
-        @QueryParams() query: VacancyViewListQueryDto,
+        @QueryParams({ type: VacancyViewListQueryDto })
+        query: VacancyViewListQueryDto,
     ) {
         ensureForbidden(
             request.user.role === UserRole.APPLICANT ||

@@ -72,7 +72,10 @@ class EmployerProfileController extends BaseController {
     }
 
     @Get('')
-    async list(@QueryParams() query: EmployerProfileListQueryDto) {
+    async list(
+        @QueryParams({ type: EmployerProfileListQueryDto })
+        query: EmployerProfileListQueryDto,
+    ) {
         const { page, limit, skip } = resolvePagination(query);
         const qb = this.repository
             .createQueryBuilder('profile')

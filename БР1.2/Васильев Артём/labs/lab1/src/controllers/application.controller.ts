@@ -100,7 +100,8 @@ class ApplicationController extends BaseController {
     async listByVacancy(
         @Param('vacancy_id') vacancyId: string,
         @Req() request: RequestWithUser,
-        @QueryParams() query: VacancyApplicationsQueryDto,
+        @QueryParams({ type: VacancyApplicationsQueryDto })
+        query: VacancyApplicationsQueryDto,
     ) {
         const vacancy = ensureFound(
             await this.vacancyRepository.findOneBy({ id: vacancyId }),
@@ -140,7 +141,8 @@ class ApplicationController extends BaseController {
     @UseBefore(authMiddleware)
     async listMy(
         @Req() request: RequestWithUser,
-        @QueryParams() query: VacancyApplicationsQueryDto,
+        @QueryParams({ type: VacancyApplicationsQueryDto })
+        query: VacancyApplicationsQueryDto,
     ) {
         const { page, limit, skip } = resolvePagination(query);
         const where =

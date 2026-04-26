@@ -61,7 +61,9 @@ class CompanyController extends BaseController {
     }
 
     @Get('')
-    async list(@QueryParams() query: CompanyListQueryDto) {
+    async list(
+        @QueryParams({ type: CompanyListQueryDto }) query: CompanyListQueryDto,
+    ) {
         const { page, limit, skip } = resolvePagination(query);
         const searchValue = query.title ?? query.search;
         const where = searchValue

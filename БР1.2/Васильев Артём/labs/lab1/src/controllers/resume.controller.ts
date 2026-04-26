@@ -101,7 +101,7 @@ class ResumeController extends BaseController {
     @UseBefore(authMiddleware)
     async list(
         @Req() request: RequestWithUser,
-        @QueryParams() query: ResumeListQueryDto,
+        @QueryParams({ type: ResumeListQueryDto }) query: ResumeListQueryDto,
     ) {
         const { page, limit, skip } = resolvePagination(query);
         const qb = this.repository

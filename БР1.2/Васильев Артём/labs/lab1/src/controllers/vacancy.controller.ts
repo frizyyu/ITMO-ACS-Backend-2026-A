@@ -142,7 +142,9 @@ class VacancyController extends BaseController {
     }
 
     @Get('')
-    async list(@QueryParams() query: VacancyListQueryDto) {
+    async list(
+        @QueryParams({ type: VacancyListQueryDto }) query: VacancyListQueryDto,
+    ) {
         const { page, limit, skip } = resolvePagination(query);
         const qb = this.repository
             .createQueryBuilder('vacancy')
@@ -228,7 +230,7 @@ class VacancyController extends BaseController {
     @UseBefore(authMiddleware)
     async listMy(
         @Req() request: RequestWithUser,
-        @QueryParams() query: VacancyListQueryDto,
+        @QueryParams({ type: VacancyListQueryDto }) query: VacancyListQueryDto,
     ) {
         const { page, limit, skip } = resolvePagination(query);
         const qb = this.repository
