@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: Dictionary Service API
+  version: 1.0.0
+  description: Published industries and experience levels.
+servers:
+  - url: http://localhost:3003/api/v1
+tags:
+  - name: Dictionaries
+  - name: Internal
+paths:
+  /industries:
+    get:
+      tags: [Dictionaries]
+      summary: List published industries
+      responses:
+        '200':
+          description: Industry list
+  /experience-levels:
+    get:
+      tags: [Dictionaries]
+      summary: List published experience levels
+      responses:
+        '200':
+          description: Experience level list
+  /internal/v1/industries/{industry_id}:
+    get:
+      tags: [Internal]
+      summary: Internal industry lookup
+      security:
+        - serviceToken: []
+      parameters:
+        - name: industry_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Industry found
+  /internal/v1/experience-levels/{experience_level_id}:
+    get:
+      tags: [Internal]
+      summary: Internal experience level lookup
+      security:
+        - serviceToken: []
+      parameters:
+        - name: experience_level_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Experience level found
+components:
+  securitySchemes:
+    serviceToken:
+      type: apiKey
+      in: header
+      name: X-Service-Token
