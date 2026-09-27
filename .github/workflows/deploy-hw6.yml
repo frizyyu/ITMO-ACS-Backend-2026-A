@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "БР1.2/Васильев Артём/homeworks/hw6/**"
+      - "!БР1.2/Васильев Артём/homeworks/hw6/**/*.md"
+      - "!БР1.2/Васильев Артём/homeworks/hw6/**/*.pdf"
       - ".github/workflows/deploy-hw6.yml"
   workflow_dispatch:
 
