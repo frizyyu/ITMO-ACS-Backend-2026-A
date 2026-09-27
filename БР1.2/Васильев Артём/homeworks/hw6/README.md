@@ -1,63 +1,40 @@
-# HW6 Job Platform
+# ДЗ6. CI/CD для Job Platform
 
-HW6 is based on the HW5 microservice backend. The project contains the root TypeScript backend sources, service-specific TypeScript applications, Dockerfiles, Docker Compose configuration, OpenAPI docs, and package manifests.
+ДЗ6 автоматизирует проверку и развертывание микросервисной Job Platform на сервер, подготовленный в ЛР4.
 
-## Structure
+## Trigger
 
-- `src/` - root Express/TypeORM application sources.
-- `services/auth-user-service` - authentication and users.
-- `services/company-service` - companies and employer profiles.
-- `services/dictionary-service` - dictionaries.
-- `services/vacancy-service` - vacancies.
-- `services/resume-service` - resumes.
-- `services/application-service` - vacancy applications and RabbitMQ publishing.
-- `services/interaction-service` - favorites, views, and RabbitMQ consumers.
-- `docker-compose.yml` - local infrastructure and all microservices.
+Workflow `.github/workflows/deploy-hw6.yml` запускается:
 
-## Local Start
+- автоматически при push в `main`, если изменились ДЗ6 или сам workflow;
+- вручную через `workflow_dispatch`.
 
-```bash
-cp .env.example .env
-docker compose up -d --build
+## Pipeline
+
+1. Семь параллельных CI jobs выполняют `npm ci`, TypeScript build и Docker build каждого сервиса.
+2. Отдельный job проверяет `docker compose config`.
+3. Deploy job запускается только после успеха всех проверок.
+4. GitHub Actions подключается к серверу по SSH-ключу, обновляет checkout и создает `.env` из Secrets.
+5. Образы на сервере собираются последовательно, чтобы не перегрузить сервер с 2 ГБ RAM.
+6. Compose запускает сервисы, затем выполняются миграции.
+7. Pipeline делает локальный и внешний HTTP smoke-тест.
+
+## GitHub Actions Secrets
+
+- `SSH_HOST` - адрес сервера;
+- `SSH_USER` - SSH-пользователь;
+- `SSH_PRIVATE_KEY` - закрытый deploy-ключ;
+- `JWT_SECRET_KEY` - ключ JWT;
+- `SERVICE_TOKEN` - токен internal API;
+- `DB_PASSWORD` - пароль PostgreSQL;
+- `RABBITMQ_USER`, `RABBITMQ_PASSWORD` - учетные данны RabbitMQ.
+
+Значения Secrets не хранятся в Git.
+
+## Внешний URL
+
+```text
+https://2.26.136.32/job-platform/
 ```
 
-The compose project is named `job-platform-hw6`, so Docker resources are separated from HW5.
-
-External service ports:
-
-| Service | URL |
-|---|---|
-| auth-user-service | `http://localhost:3101/api/v1` |
-| company-service | `http://localhost:3102/api/v1` |
-| dictionary-service | `http://localhost:3103/api/v1` |
-| vacancy-service | `http://localhost:3104/api/v1` |
-| resume-service | `http://localhost:3105/api/v1` |
-| application-service | `http://localhost:3106/api/v1` |
-| interaction-service | `http://localhost:3107/api/v1` |
-| RabbitMQ management | `http://localhost:16672` |
-
-PostgreSQL databases are exposed on `16433-16439`. RabbitMQ AMQP is exposed on `6672`.
-
-## Useful Commands
-
-Run from the `hw6` directory:
-
-```bash
-npm install
-npm run build
-```
-
-Run a command for an individual service:
-
-```bash
-cd services/auth-user-service
-npm install
-npm run build
-npm run migrate
-```
-
-Stop the stack:
-
-```bash
-docker compose down
-```
+Nginx настроен в ЛР4 и проксирует запросы к backend-портам, доступным только на `127.0.0.1`.

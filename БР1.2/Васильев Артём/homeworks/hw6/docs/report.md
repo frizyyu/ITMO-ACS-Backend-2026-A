@@ -1,28 +1,44 @@
-# HW6 Report
+# Отчет по ДЗ6
 
-## Goal
+## Цель
 
-Prepare a standalone HW6 project based on the HW5 Job Platform microservice backend.
+Настроить GitHub Actions для автоматической проверки и развертывания Job Platform на удаленный сервер при обновлении `main`.
 
-## Changes
+## Trigger
 
-1. Created `homeworks/hw6`.
-2. Copied the root `src/` application, `services/`, service Dockerfiles, OpenAPI docs, package manifests, lock files, TypeScript configs, and Docker Compose config from HW5.
-3. Renamed npm packages to `job-platform-hw6` and `job-platform-hw6-<service>`.
-4. Added the Docker Compose project name `job-platform-hw6`.
-5. Changed external Docker ports to avoid collisions with HW5:
-   - services: `3101-3107`
-   - PostgreSQL databases: `16433-16439`
-   - RabbitMQ: `6672`, management UI `16672`
-6. Added a HW6-specific `README.md` with start commands and exposed ports.
+Workflow расположен в корневом `.github/workflows/deploy-hw6.yml`, поэтому GitHub распознает его. Автоматический trigger - push в ветку `main` с изменениями ДЗ6 или workflow. Для повторной проверки добавлен `workflow_dispatch`.
 
-## Verification
+## CI
 
-The following checks were run successfully:
+Матрица из семи jobs проверяет каждый микросервис:
 
-```bash
-docker compose config --quiet
-npm run build
-```
+1. `npm ci` устанавливает версии из lock-файла.
+2. `npm run build` компилирует TypeScript.
+3. `docker build` проверяет Dockerfile.
 
-The TypeScript build was checked for the root package and all service packages.
+Отдельный job валидирует `docker-compose.yml`. Deploy job зависит от обеих проверок и не запускается при ошибке.
+
+## CD
+
+Deploy job:
+
+1. подключается к Ubuntu-серверу по SSH-ключу;
+2. клонирует репозиторий или обновляет checkout до `origin/main`;
+3. создает `.env` из GitHub Actions Secrets;
+4. валидирует Compose;
+5. собирает образы последовательно из-за ограниченной RAM;
+6. запускает Docker Compose и миграции;
+7. проверяет dictionary-service локально и через Nginx;
+8. выводит итоговый `docker compose ps`.
+
+## Secrets
+
+Для SSH используются `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`. Runtime-конфигурация передается через `JWT_SECRET_KEY`, `SERVICE_TOKEN`, `DB_PASSWORD`, `RABBITMQ_USER` и `RABBITMQ_PASSWORD`. В репозитории нет их значений.
+
+## Проверка
+
+После автодеплоя проверяются успешный GitHub Actions run, статусы контейнеров и HTTP 200 для `https://2.26.136.32/job-platform/api/v1/industries`.
+
+## Вывод
+
+Процесс от push в `main` до обновления приложения на удаленном сервере автоматизирован GitHub Actions. Деплой выполняется только после успешных CI-проверок.

@@ -1,4 +1,4 @@
-name: Deploy HW6
+name: HW6 CI/CD
 
 on:
   push:
@@ -10,41 +10,86 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-hw6-main
+  group: hw6-main
   cancel-in-progress: false
 
 env:
-  BRANCH: main
-  HW6_SUBDIR: "БР1.2/Васильев Артём/homeworks/hw6"
-  DEPLOY_PATH: ${{ secrets.HW6_DEPLOY_PATH || '/opt/job-platform-hw6' }}
-  REPO_URL: ${{ secrets.HW6_REPO_URL || format('{0}/{1}.git', github.server_url, github.repository) }}
+  APP_DIR: "БР1.2/Васильев Артём/homeworks/hw6"
 
 jobs:
-  deploy:
-    name: Deploy HW6 with Docker Compose
+  service-ci:
+    name: Check ${{ matrix.service }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - auth-user-service
+          - company-service
+          - dictionary-service
+          - vacancy-service
+          - resume-service
+          - application-service
+          - interaction-service
 
     steps:
-      # Step 1: Checkout the repository so GitHub Actions records the exact revision being deployed.
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Print non-secret deployment context for easier troubleshooting in Actions logs.
-      - name: Log deployment context
-        run: |
-          echo "Deploying branch: ${BRANCH}"
-          echo "Commit: ${GITHUB_SHA}"
-          echo "HW6 path inside repository: ${HW6_SUBDIR}"
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ${{ env.APP_DIR }}/services/${{ matrix.service }}/package-lock.json
 
-      # Step 3: Connect to the remote server over SSH and run an idempotent Docker Compose deployment.
-      - name: Deploy on remote server
+      - name: Install exact dependencies
+        working-directory: ${{ env.APP_DIR }}/services/${{ matrix.service }}
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: ${{ env.APP_DIR }}/services/${{ matrix.service }}
+        run: npm run build
+
+      - name: Build Docker image
+        working-directory: ${{ env.APP_DIR }}/services/${{ matrix.service }}
+        run: docker build --tag hw6-${{ matrix.service }}:${{ github.sha }} .
+
+  compose-ci:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        working-directory: ${{ env.APP_DIR }}
+        env:
+          JWT_SECRET_KEY: ci-jwt-secret
+          SERVICE_TOKEN: ci-service-token
+          DB_PASSWORD: ci-db-password
+          RABBITMQ_USER: ci-rabbit-user
+          RABBITMQ_PASSWORD: ci-rabbit-password
+        run: docker compose config --quiet
+
+  deploy:
+    name: Deploy to remote server
+    needs:
+      - service-ci
+      - compose-ci
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
-          BRANCH: ${{ env.BRANCH }}
+          APP_SUBDIR: ${{ env.APP_DIR }}
           COMMIT_SHA: ${{ github.sha }}
-          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
-          HW6_SUBDIR: ${{ env.HW6_SUBDIR }}
-          REPO_URL: ${{ env.REPO_URL }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
           SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -52,86 +97,72 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
         with:
           host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER || 'root' }}
+          username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: BRANCH,COMMIT_SHA,DEPLOY_PATH,HW6_SUBDIR,REPO_URL,JWT_SECRET_KEY,SERVICE_TOKEN,DB_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
+          command_timeout: 20m
+          envs: APP_SUBDIR,COMMIT_SHA,REPO_URL,JWT_SECRET_KEY,SERVICE_TOKEN,DB_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
           script: |
             set -Eeuo pipefail
 
-            log() {
-              printf '[deploy-hw6] %s\n' "$1"
-            }
+            : "${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}"
+            : "${SERVICE_TOKEN:?SERVICE_TOKEN is required}"
+            : "${DB_PASSWORD:?DB_PASSWORD is required}"
+            : "${RABBITMQ_USER:?RABBITMQ_USER is required}"
+            : "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}"
 
-            fail() {
-              printf '[deploy-hw6][error] %s\n' "$1" >&2
-              exit 1
-            }
+            DEPLOY_ROOT=/opt/job-platform-hw6
+            REPO_DIR="${DEPLOY_ROOT}/repo"
+            APP_PATH="${REPO_DIR}/${APP_SUBDIR}"
 
-            trap 'fail "Deployment failed at line ${LINENO}. Check the command output above."' ERR
+            mkdir -p "${DEPLOY_ROOT}"
 
-            # Step 3.1: Validate required deployment secrets before touching the running stack.
-            : "${JWT_SECRET_KEY:?JWT_SECRET_KEY secret is required}"
-            : "${SERVICE_TOKEN:?SERVICE_TOKEN secret is required}"
-            : "${DB_PASSWORD:?DB_PASSWORD secret is required}"
-            : "${RABBITMQ_USER:?RABBITMQ_USER secret is required}"
-            : "${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD secret is required}"
-
-            REPO_DIR="${DEPLOY_PATH}/repo"
-            APP_DIR="${REPO_DIR}/${HW6_SUBDIR}"
-
-            # Step 3.2: Create the deployment directory if this is the first deployment.
-            log "Preparing deployment directory: ${DEPLOY_PATH}"
-            mkdir -p "${DEPLOY_PATH}"
-
-            # Step 3.3: Clone the repository on first run, otherwise fetch and reset to the latest main commit.
             if [ ! -d "${REPO_DIR}/.git" ]; then
-              log "Repository not found on server. Cloning ${BRANCH}."
-              git clone --branch "${BRANCH}" --single-branch "${REPO_URL}" "${REPO_DIR}"
+              git clone --branch main --single-branch "${REPO_URL}" "${REPO_DIR}"
             else
-              log "Repository exists. Fetching and resetting to origin/${BRANCH}."
-              git -C "${REPO_DIR}" remote set-url origin "${REPO_URL}"
-              git -C "${REPO_DIR}" fetch --prune origin "${BRANCH}"
-              git -C "${REPO_DIR}" reset --hard "origin/${BRANCH}"
+              git -C "${REPO_DIR}" fetch --prune origin main
+              git -C "${REPO_DIR}" reset --hard origin/main
               git -C "${REPO_DIR}" clean -fd
             fi
 
-            # Step 3.4: Ensure the HW6 Docker Compose project exists after checkout.
-            test -f "${APP_DIR}/docker-compose.yml"
-            log "HW6 application directory: ${APP_DIR}"
+            test -f "${APP_PATH}/docker-compose.yml"
 
-            # Step 3.5: Write the runtime .env from GitHub Secrets on every deploy so secrets stay current.
-            log "Writing runtime .env from GitHub Secrets."
-            cat > "${APP_DIR}/.env" <<EOF
+            umask 077
+            cat > "${APP_PATH}/.env" <<EOF
             JWT_SECRET_KEY=${JWT_SECRET_KEY}
             SERVICE_TOKEN=${SERVICE_TOKEN}
             DB_PASSWORD=${DB_PASSWORD}
             RABBITMQ_USER=${RABBITMQ_USER}
             RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
             EOF
-            chmod 600 "${APP_DIR}/.env"
 
-            # Step 3.6: Validate Docker Compose before stopping the old containers.
-            log "Validating Docker Compose configuration."
-            docker compose --project-directory "${APP_DIR}" -f "${APP_DIR}/docker-compose.yml" config --quiet
+            docker compose --project-directory "${APP_PATH}" config --quiet
 
-            # Step 3.7: Stop the previous stack; this is safe to run even when no containers exist yet.
-            log "Stopping previous HW6 stack."
-            docker compose --project-directory "${APP_DIR}" -f "${APP_DIR}/docker-compose.yml" down --remove-orphans
-
-            # Step 3.8: Rebuild and start the stack in detached mode.
-            log "Building and starting HW6 stack."
-            docker compose --project-directory "${APP_DIR}" -f "${APP_DIR}/docker-compose.yml" up -d --build
-
-            # Step 3.9: Run database migrations for each service that exposes an npm migrate script.
-            log "Running service migrations."
             for service in auth-user-service company-service dictionary-service vacancy-service resume-service application-service interaction-service; do
-              log "Running migrations for ${service}."
-              docker compose --project-directory "${APP_DIR}" -f "${APP_DIR}/docker-compose.yml" exec -T "${service}" npm run migrate
+              COMPOSE_PARALLEL_LIMIT=1 docker compose --project-directory "${APP_PATH}" build "${service}"
             done
 
-            # Step 3.10: Show final container status and finish with a success marker.
-            log "Final container status:"
-            docker compose --project-directory "${APP_DIR}" -f "${APP_DIR}/docker-compose.yml" ps
-            log "HW6 deployment completed successfully for commit ${COMMIT_SHA}."
+            if [ -f /opt/job-platform-lab4/app/docker-compose.yml ]; then
+              docker compose --project-directory /opt/job-platform-lab4/app down --remove-orphans || true
+            fi
+
+            docker compose --project-directory "${APP_PATH}" up -d --remove-orphans
+
+            for service in auth-user-service company-service dictionary-service vacancy-service resume-service application-service interaction-service; do
+              docker compose --project-directory "${APP_PATH}" exec -T "${service}" npm run migrate
+            done
+
+            for attempt in $(seq 1 12); do
+              if curl --fail --silent http://127.0.0.1:3003/api/v1/industries >/dev/null; then
+                break
+              fi
+              if [ "${attempt}" -eq 12 ]; then
+                echo "Local smoke test failed" >&2
+                exit 1
+              fi
+              sleep 5
+            done
+
+            curl --fail --silent https://2.26.136.32/job-platform/api/v1/industries >/dev/null
+            docker compose --project-directory "${APP_PATH}" ps
+            echo "HW6 deployment completed for ${COMMIT_SHA}."

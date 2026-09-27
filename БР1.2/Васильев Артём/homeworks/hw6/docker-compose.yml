@@ -3,9 +3,9 @@ name: job-platform-hw6
 x-service-env: &service-env
   APP_HOST: 0.0.0.0
   APP_API_PREFIX: /api/v1
-  JWT_SECRET: ${JWT_SECRET_KEY:-super-secret-key}
-  JWT_SECRET_KEY: ${JWT_SECRET_KEY:-super-secret-key}
-  SERVICE_TOKEN: ${SERVICE_TOKEN:-dev-service-token}
+  JWT_SECRET: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+  SERVICE_TOKEN: ${SERVICE_TOKEN:?SERVICE_TOKEN is required}
   AUTH_USER_SERVICE_URL: http://auth-user-service:3001/api/v1
   COMPANY_SERVICE_URL: http://company-service:3002/api/v1
   DICTIONARY_SERVICE_URL: http://dictionary-service:3003/api/v1
@@ -13,29 +13,31 @@ x-service-env: &service-env
   RESUME_SERVICE_URL: http://resume-service:3005/api/v1
   APPLICATION_SERVICE_URL: http://application-service:3006/api/v1
   INTERACTION_SERVICE_URL: http://interaction-service:3007/api/v1
-  RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+  RABBITMQ_URL: amqp://${RABBITMQ_USER:?RABBITMQ_USER is required}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}@rabbitmq:5672
   RABBITMQ_EXCHANGE: job-platform.events
 
 x-postgres-env: &postgres-env
   POSTGRES_USER: maindb
-  POSTGRES_PASSWORD: ${DB_PASSWORD:-maindb}
+  POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
 
 services:
   rabbitmq:
     image: rabbitmq:3-management
     restart: unless-stopped
-    ports:
-      - 6672:5672
-      - 16672:15672
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   auth-user-service:
     build: ./services/auth-user-service
     restart: unless-stopped
     ports:
-      - 3101:3001
+      - 127.0.0.1:3001:3001
     environment:
       <<: *service-env
       APP_PORT: 3001
@@ -43,7 +45,7 @@ services:
       DB_PORT: 5432
       DB_NAME: users_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       users-db:
         condition: service_healthy
@@ -52,7 +54,7 @@ services:
     build: ./services/company-service
     restart: unless-stopped
     ports:
-      - 3102:3002
+      - 127.0.0.1:3002:3002
     environment:
       <<: *service-env
       APP_PORT: 3002
@@ -60,7 +62,7 @@ services:
       DB_PORT: 5432
       DB_NAME: companies_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       companies-db:
         condition: service_healthy
@@ -71,7 +73,7 @@ services:
     build: ./services/dictionary-service
     restart: unless-stopped
     ports:
-      - 3103:3003
+      - 127.0.0.1:3003:3003
     environment:
       <<: *service-env
       APP_PORT: 3003
@@ -79,7 +81,7 @@ services:
       DB_PORT: 5432
       DB_NAME: dictionaries_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       dictionaries-db:
         condition: service_healthy
@@ -88,7 +90,7 @@ services:
     build: ./services/vacancy-service
     restart: unless-stopped
     ports:
-      - 3104:3004
+      - 127.0.0.1:3004:3004
     environment:
       <<: *service-env
       APP_PORT: 3004
@@ -96,7 +98,7 @@ services:
       DB_PORT: 5432
       DB_NAME: vacancies_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       vacancies-db:
         condition: service_healthy
@@ -109,7 +111,7 @@ services:
     build: ./services/resume-service
     restart: unless-stopped
     ports:
-      - 3105:3005
+      - 127.0.0.1:3005:3005
     environment:
       <<: *service-env
       APP_PORT: 3005
@@ -117,7 +119,7 @@ services:
       DB_PORT: 5432
       DB_NAME: resumes_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       resumes-db:
         condition: service_healthy
@@ -126,7 +128,7 @@ services:
     build: ./services/application-service
     restart: unless-stopped
     ports:
-      - 3106:3006
+      - 127.0.0.1:3006:3006
     environment:
       <<: *service-env
       APP_PORT: 3006
@@ -134,7 +136,7 @@ services:
       DB_PORT: 5432
       DB_NAME: applications_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       applications-db:
         condition: service_healthy
@@ -145,13 +147,13 @@ services:
       company-service:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
 
   interaction-service:
     build: ./services/interaction-service
     restart: unless-stopped
     ports:
-      - 3107:3007
+      - 127.0.0.1:3007:3007
     environment:
       <<: *service-env
       APP_PORT: 3007
@@ -159,23 +161,21 @@ services:
       DB_PORT: 5432
       DB_NAME: interactions_db
       DB_USER: maindb
-      DB_PASSWORD: ${DB_PASSWORD:-maindb}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     depends_on:
       interactions-db:
         condition: service_healthy
       vacancy-service:
         condition: service_started
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
 
   users-db:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16439:5432
     volumes:
-      - ./dbs/users-db:/var/lib/postgresql/data
+      - users-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: users_db
@@ -189,10 +189,8 @@ services:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16433:5432
     volumes:
-      - ./dbs/companies-db:/var/lib/postgresql/data
+      - companies-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: companies_db
@@ -206,10 +204,8 @@ services:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16434:5432
     volumes:
-      - ./dbs/dictionaries-db:/var/lib/postgresql/data
+      - dictionaries-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: dictionaries_db
@@ -223,10 +219,8 @@ services:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16435:5432
     volumes:
-      - ./dbs/vacancies-db:/var/lib/postgresql/data
+      - vacancies-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: vacancies_db
@@ -240,10 +234,8 @@ services:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16436:5432
     volumes:
-      - ./dbs/resumes-db:/var/lib/postgresql/data
+      - resumes-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: resumes_db
@@ -257,10 +249,8 @@ services:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16437:5432
     volumes:
-      - ./dbs/applications-db:/var/lib/postgresql/data
+      - applications-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: applications_db
@@ -274,10 +264,8 @@ services:
     image: postgres:16-alpine
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - 16438:5432
     volumes:
-      - ./dbs/interactions-db:/var/lib/postgresql/data
+      - interactions-db-data:/var/lib/postgresql/data
     environment:
       <<: *postgres-env
       POSTGRES_DB: interactions_db
@@ -286,3 +274,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+volumes:
+  users-db-data:
+  companies-db-data:
+  dictionaries-db-data:
+  vacancies-db-data:
+  resumes-db-data:
+  applications-db-data:
+  interactions-db-data:
