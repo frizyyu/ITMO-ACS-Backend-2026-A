@@ -29,9 +29,13 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+      # A cold RabbitMQ start is slow while this 1.9 GB host is recovering
+      # from seven sequential image builds. Failures during warm-up must not
+      # mark the broker unhealthy before it has completed initialisation.
+      start_period: 180s
+      interval: 10s
+      timeout: 10s
+      retries: 12
 
   auth-user-service:
     build: ./services/auth-user-service
