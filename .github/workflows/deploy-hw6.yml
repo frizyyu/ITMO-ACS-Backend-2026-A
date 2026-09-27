@@ -100,7 +100,9 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          command_timeout: 20m
+          # The first deployment builds seven images sequentially to stay within
+          # the server's 1.9 GB RAM limit, so allow enough time for a cold cache.
+          command_timeout: 40m
           envs: APP_SUBDIR,COMMIT_SHA,REPO_URL,JWT_SECRET_KEY,SERVICE_TOKEN,DB_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
           script: |
             set -Eeuo pipefail
