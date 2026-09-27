@@ -37,7 +37,21 @@ Deploy job:
 
 ## Проверка
 
-После автодеплоя проверяются успешный GitHub Actions run, статусы контейнеров и HTTP 200 для `https://2.26.136.32/job-platform/api/v1/industries`.
+Итоговый GitHub Actions run `36343708764` для commit `e541c595c8d546be7843347cf4414d9623e530f4` завершился успешно. Все семь jobs микросервисов, проверка Compose и deploy имеют статус `success`.
+
+После автодеплоя независимо проверено:
+
+- checkout сервера указывает на тот же commit;
+- работают 7 backend-сервисов и 7 healthy PostgreSQL;
+- RabbitMQ имеет статус `healthy`;
+- порты 3001-3007 привязаны только к `127.0.0.1`;
+- PostgreSQL и RabbitMQ не публикуют порты на host;
+- `https://2.26.136.32/job-platform/api/v1/industries` возвращает HTTP 200;
+- internal API возвращает HTTP 404.
+
+Ссылка на run: <https://github.com/frizyyu/ITMO-ACS-Backend-2026-A/actions/runs/36343708764>.
+
+Первый холодный deploy выявил два ограничения маломощного сервера: последовательная сборка заняла больше 20 минут, а RabbitMQ под пиковой нагрузкой не успел инициализироваться в прежнее окно healthcheck. Поэтому timeout SSH-команды увеличен до 40 минут, а RabbitMQ получил `start_period: 180s`. Проверка здоровья сохранена и итоговый запуск подтвердил исправления.
 
 ## Вывод
 
