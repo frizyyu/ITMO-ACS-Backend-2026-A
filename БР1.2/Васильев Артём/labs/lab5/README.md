@@ -7,8 +7,10 @@
 - `deploy/ansible/site.yml` — полная настройка нового Ubuntu-сервера;
 - `deploy/ansible/deploy.yml` — обновление только приложения;
 - `deploy/ansible/roles/` — роли `common`, `docker`, `firewall`, `nginx`, `app`;
+- `deploy/config/ci.env` — изменяемые параметры CI/CD без секретов;
 - `deploy/scripts/setup-server.sh` — оболочка над `site.yml`;
 - `deploy/scripts/deploy.sh` — оболочка над `deploy.yml`;
+- `deploy/scripts/ci-deploy.sh` — скрипт деплоя, подключаемый из GitHub Actions;
 - `.github/workflows/deploy-lab5.yml` — CI/CD с Ansible.
 
 ## Локальный запуск
@@ -43,6 +45,8 @@ bash deploy/scripts/deploy.sh
 ```
 
 Секреты не хранятся в git. При первом деплое `.env` создаётся на сервере с правами `0600`; существующий `.env` не перезаписывается.
+
+GitHub Actions использует закреплённый runner `ubuntu-24.04`. Сценарий CI/CD и изменяемые параметры вынесены из workflow в `deploy/scripts/ci-deploy.sh` и `deploy/config/ci.env`; секреты передаются только через переменные окружения GitHub Actions.
 
 ## Nginx и VPN
 

@@ -31,6 +31,8 @@ Deploy job:
 7. проверяет dictionary-service локально и через Nginx;
 8. выводит итоговый `docker compose ps`.
 
+Команды удалённого деплоя вынесены в `deploy/scripts/ci-deploy-remote.sh`, а изменяемые параметры — в `deploy/config/ci.env`. Workflow передаёт секреты и подключает сценарий через `script_path`. Runner закреплён на `ubuntu-24.04`; версия Node.js, префикс Docker-образов и timeout задаются в верхнем блоке `env`.
+
 ## Secrets
 
 Для SSH используются `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`. Runtime-конфигурация передается через `JWT_SECRET_KEY`, `SERVICE_TOKEN`, `DB_PASSWORD`, `RABBITMQ_USER` и `RABBITMQ_PASSWORD`. В репозитории нет их значений.
