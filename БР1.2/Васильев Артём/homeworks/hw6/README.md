@@ -34,7 +34,7 @@ Workflow `.github/workflows/deploy-hw6.yml` запускается:
 ## Внешний URL
 
 ```text
-https://2.26.136.32/job-platform/
+https://185.236.24.201/job-platform/
 ```
 
 Nginx настроен в ЛР4 и проксирует запросы к backend-портам, доступным только на `127.0.0.1`.

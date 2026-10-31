@@ -167,6 +167,6 @@ jobs:
               sleep 5
             done
 
-            curl --fail --silent https://2.26.136.32/job-platform/api/v1/industries >/dev/null
+            curl --fail --silent https://185.236.24.201/job-platform/api/v1/industries >/dev/null
             docker compose --project-directory "${APP_PATH}" ps
             echo "HW6 deployment completed for ${COMMIT_SHA}."
