@@ -46,7 +46,7 @@ Deploy job:
 - RabbitMQ имеет статус `healthy`;
 - порты 3001-3007 привязаны только к `127.0.0.1`;
 - PostgreSQL и RabbitMQ не публикуют порты на host;
-- `https://2.26.136.32/job-platform/api/v1/industries` возвращает HTTP 200;
+- `https://185.236.24.201/job-platform/api/v1/industries` возвращает HTTP 200;
 - internal API возвращает HTTP 404.
 
 Ссылка на run: <https://github.com/frizyyu/ITMO-ACS-Backend-2026-A/actions/runs/36343708764>.

@@ -1,0 +1,72 @@
+name: LAB5 Ansible deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "БР1.2/Васильев Артём/labs/lab5/**"
+      - ".github/workflows/deploy-lab5.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: lab5-main
+  cancel-in-progress: false
+
+jobs:
+  ansible-deploy:
+    name: Deploy lab5 with Ansible
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Install Ansible
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 -m venv "$RUNNER_TEMP/ansible-venv"
+          "$RUNNER_TEMP/ansible-venv/bin/pip" install --quiet --upgrade pip
+          "$RUNNER_TEMP/ansible-venv/bin/pip" install --quiet 'ansible-core>=2.16,<2.19'
+          "$RUNNER_TEMP/ansible-venv/bin/ansible-galaxy" collection install \
+            -r "БР1.2/Васильев Артём/labs/lab5/deploy/ansible/requirements.yml"
+
+      - name: Apply Ansible deploy playbook
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER || 'root' }}
+          SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+          SSH_KEY: ${{ github.workspace }}/.ssh/deploy_key
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+          BRANCH: main
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          SERVICE_TOKEN: ${{ secrets.SERVICE_TOKEN }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
+          RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_KEY"
+          chmod 600 "$SSH_KEY"
+          cd "БР1.2/Васильев Артём/labs/lab5/deploy/ansible"
+          "$RUNNER_TEMP/ansible-venv/bin/ansible-playbook" deploy.yml
+
+      - name: Smoke test through nginx
+        shell: bash
+        env:
+          PUBLIC_BASE_URL: ${{ vars.PUBLIC_BASE_URL || format('https://{0}/job-platform', secrets.SSH_HOST) }}
+        run: |
+          set -Eeuo pipefail
+          curl -kfsS "${PUBLIC_BASE_URL}/api/v1/industries" >/dev/null

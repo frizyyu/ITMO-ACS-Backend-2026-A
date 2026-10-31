@@ -53,8 +53,8 @@ systemctl reload nginx
 ## Внешняя проверка
 
 ```sh
-curl --fail https://2.26.136.32/job-platform/
-curl --fail https://2.26.136.32/job-platform/api/v1/industries
-curl --fail https://2.26.136.32/job-platform/api/v1/vacancies
+curl --fail https://185.236.24.201/job-platform/
+curl --fail https://185.236.24.201/job-platform/api/v1/industries
+curl --fail https://185.236.24.201/job-platform/api/v1/vacancies
 ```
 
