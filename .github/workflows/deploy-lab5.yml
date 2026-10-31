@@ -13,13 +13,13 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  LAB5_DIR: "БР1.2/Васильев Артём/labs/lab5"
+  LAB5_DIR: ${{ vars.LAB5_DIR || 'БР1.2/Васильев Артём/labs/lab5' }}
   BRANCH: main
 
 jobs:
   ansible-deploy:
     name: Deploy lab5 with Ansible
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_IMAGE || 'ubuntu-24.04' }}
     timeout-minutes: 45
 
     steps:

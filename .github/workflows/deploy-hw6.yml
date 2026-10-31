@@ -16,15 +16,15 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  APP_DIR: "БР1.2/Васильев Артём/homeworks/hw6"
-  NODE_VERSION: "22"
-  DOCKER_IMAGE_PREFIX: "hw6"
-  DEPLOY_COMMAND_TIMEOUT: "40m"
+  APP_DIR: ${{ vars.HW6_APP_DIR || 'БР1.2/Васильев Артём/homeworks/hw6' }}
+  NODE_VERSION: ${{ vars.NODE_VERSION || '22' }}
+  DOCKER_IMAGE_PREFIX: ${{ vars.DOCKER_IMAGE_PREFIX || 'hw6' }}
+  DEPLOY_COMMAND_TIMEOUT: ${{ vars.DEPLOY_COMMAND_TIMEOUT || '40m' }}
 
 jobs:
   service-ci:
     name: Check ${{ matrix.service }}
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_IMAGE || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +62,7 @@ jobs:
 
   compose-ci:
     name: Validate Docker Compose
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_IMAGE || 'ubuntu-24.04' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
     needs:
       - service-ci
       - compose-ci
-    runs-on: ubuntu-24.04
+    runs-on: ${{ vars.RUNNER_IMAGE || 'ubuntu-24.04' }}
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
