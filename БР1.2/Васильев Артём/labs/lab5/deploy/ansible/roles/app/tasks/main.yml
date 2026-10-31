@@ -54,7 +54,7 @@
     fail_msg: "Для первого деплоя задайте JWT_SECRET_KEY, SERVICE_TOKEN, DB_PASSWORD, RABBITMQ_USER и RABBITMQ_PASSWORD"
   when:
     - not app_env_file.stat.exists
-    - not legacy_app_env_file.stat.exists
+    - not app_legacy_env_file.stat.exists
 
 - name: Создать .env из переменных окружения
   ansible.builtin.copy:
@@ -69,7 +69,7 @@
       RABBITMQ_PASSWORD={{ lookup('env', 'RABBITMQ_PASSWORD') }}
   when:
     - not app_env_file.stat.exists
-    - not legacy_app_env_file.stat.exists
+    - not app_legacy_env_file.stat.exists
 
 - name: Проверить Compose-конфигурацию
   ansible.builtin.command:
