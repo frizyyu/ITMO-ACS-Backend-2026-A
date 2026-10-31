@@ -19,6 +19,8 @@ Workflow `.github/workflows/deploy-hw6.yml` запускается:
 6. Compose запускает сервисы, затем выполняются миграции.
 7. Pipeline делает локальный и внешний HTTP smoke-тест.
 
+Изменяемые параметры деплоя вынесены в `deploy/config/ci.env`, а удалённый сценарий — в `deploy/scripts/ci-deploy-remote.sh`. Workflow только передаёт секреты и запускает этот сценарий через `script_path`. Runner закреплён на `ubuntu-24.04`, Node.js и остальные CI-параметры задаются в верхнем блоке `env` workflow.
+
 ## GitHub Actions Secrets
 
 - `SSH_HOST` - адрес сервера;

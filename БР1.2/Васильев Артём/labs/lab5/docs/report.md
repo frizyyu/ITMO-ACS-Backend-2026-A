@@ -62,9 +62,12 @@ deploy/
 │       ├── firewall/
 │       ├── nginx/
 │       └── app/
+├── config/
+│   └── ci.env
 └── scripts/
     ├── setup-server.sh
-    └── deploy.sh
+    ├── deploy.sh
+    └── ci-deploy.sh
 ```
 
 ## 4. Роли Ansible
@@ -125,13 +128,15 @@ compose_project_name: job-platform-hw6
 Workflow `.github/workflows/deploy-lab5.yml` выполняет:
 
 1. checkout репозитория;
-2. подготовку SSH-ключа;
-3. установку `ansible-core`;
-4. установку коллекции `community.general`;
-5. запуск `ansible-playbook deploy.yml`;
-6. внешний smoke-test через Nginx.
+2. запуск `deploy/scripts/ci-deploy.sh`;
+3. загрузку параметров из `deploy/config/ci.env`;
+4. подготовку SSH-ключа и установку `ansible-core`;
+5. установку коллекции `community.general`;
+6. запуск `ansible-playbook deploy.yml`;
+7. внешний smoke-test через Nginx.
 
 Параллельные деплои запрещены через `concurrency`, так как сервер ограничен по памяти.
+Runner GitHub Actions закреплён на `ubuntu-24.04`; секреты передаются только через переменные окружения workflow.
 
 ## 6. Безопасность и откат
 
