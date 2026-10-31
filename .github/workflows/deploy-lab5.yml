@@ -26,9 +26,9 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          mkdir -p ~/.ssh "$RUNNER_TEMP"
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
           ssh-keyscan -p "${{ secrets.SSH_PORT || 22 }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Install Ansible
@@ -47,7 +47,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER || 'root' }}
           SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
-          SSH_KEY: ${{ github.workspace }}/.ssh/deploy_key
+          SSH_KEY: ${{ runner.temp }}/deploy_key
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
           BRANCH: main
           JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
@@ -57,7 +57,6 @@ jobs:
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          mkdir -p "$HOME/.ssh"
           printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > "$SSH_KEY"
           chmod 600 "$SSH_KEY"
           cd "БР1.2/Васильев Артём/labs/lab5/deploy/ansible"
