@@ -40,7 +40,7 @@
   when:
     - not app_env_file.stat.exists
     - legacy_app_dir != app_dir
-    - legacy_app_env_file.stat.exists
+    - app_legacy_env_file.stat.exists
     - app_legacy_env_file.stat.isreg
 
 - name: Проверить секреты для первого деплоя
